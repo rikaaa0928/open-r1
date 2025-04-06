@@ -42,9 +42,9 @@ if stale_egg_info.exists():
 #   * If a dependency is fast-moving (e.g. trl), pin to the exact version
 _deps = [
     "accelerate==1.4.0",
-    "bitsandbytes>=0.43.0",
+    #"bitsandbytes>=0.43.0",
     "datasets>=3.2.0",
-    "deepspeed==0.15.4",
+    #"deepspeed==0.15.4",
     "distilabel[vllm,ray,openai]>=1.5.2",
     "e2b-code-interpreter>=1.0.5",
     "einops>=0.8.0",
@@ -54,7 +54,7 @@ _deps = [
     "isort>=5.12.0",
     "langdetect",  # Needed for LightEval's extended tasks
     "latex2sympy2_extended>=1.0.6",
-    "liger_kernel==0.5.3",
+    #"liger_kernel==0.5.3",
     "lighteval @ git+https://github.com/huggingface/lighteval.git@ed084813e0bd12d82a06d9f913291fdbee774905",
     "math-verify==0.5.2",  # Used for math verification in grpo
     "packaging>=23.0",
@@ -96,16 +96,16 @@ extras["dev"] = extras["quality"] + extras["tests"] + extras["eval"] + extras["c
 # core dependencies shared across the whole project - keep this to a bare minimum :)
 install_requires = [
     deps["accelerate"],
-    deps["bitsandbytes"],
+    #deps["bitsandbytes"],
     deps["einops"],
     deps["datasets"],
-    deps["deepspeed"],
+    #deps["deepspeed"],
     deps["hf_transfer"],
     deps["huggingface-hub"],
     deps["langdetect"],
     deps["latex2sympy2_extended"],
     deps["math-verify"],
-    deps["liger_kernel"],
+    #deps["liger_kernel"],
     deps["packaging"],  # utilities from PyPA to e.g., compare versions
     deps["safetensors"],
     deps["sentencepiece"],

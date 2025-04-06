@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """Reward functions for GRPO training."""
-
+import logging
 import asyncio
 import json
 import math
@@ -28,7 +28,8 @@ from math_verify import LatexExtractionConfig, parse, verify
 from .utils import is_e2b_available
 from .utils.ioi import SubtaskResult, add_includes, get_piston_client_from_env, score_subtask
 
-
+logger = logging.getLogger(__name__)
+logger.setLevel("INFO")
 if is_e2b_available():
     from dotenv import load_dotenv
     from e2b_code_interpreter import AsyncSandbox
@@ -535,6 +536,83 @@ async def run_script(script: str, language: str, semaphore: asyncio.Semaphore) -
                 print(f"Error from E2B executor kill with sandbox ID {sandbox.sandbox_id} : {e}")
 
 
+# --- Custom JSON Rewards ---
+
+def json_format_reward(completions: list[list[dict[str, str]]], **kwargs) -> list[float]:
+    """Reward function to check if the output is valid JSON."""
+    rewards = []
+    for completion in completions:
+        content = completion[0]["content"]
+        try:
+            json.loads(content)
+            rewards.append(1.0)
+        except json.JSONDecodeError:
+            rewards.append(0.0)
+    return rewards
+
+def key_correctness_reward(completions: list[list[dict[str, str]]], **kwargs) -> list[float]:
+    """Reward function to check if the JSON contains the 'data' key."""
+    rewards = []
+    for completion in completions:
+        content = completion[0]["content"]
+        try:
+            data = json.loads(content)
+            if isinstance(data, dict) and "data" in data:
+                rewards.append(1.0)
+            else:
+                rewards.append(0.0)
+        except json.JSONDecodeError:
+            rewards.append(0.0) # Penalize invalid JSON
+    return rewards
+
+def key_exclusivity_reward(completions: list[list[dict[str, str]]], **kwargs) -> list[float]:
+    """Reward function to check if the JSON *only* contains the 'data' key."""
+    rewards = []
+    for completion in completions:
+        content = completion[0]["content"]
+        try:
+            data = json.loads(content)
+            if isinstance(data, dict) and list(data.keys()) == ["data"]:
+                rewards.append(1.0)
+            else:
+                rewards.append(0.0)
+        except json.JSONDecodeError:
+            rewards.append(0.0) # Penalize invalid JSON
+    return rewards
+
+def value_correctness_reward(prompts: list[list[dict[str, str]]], completions: list[list[dict[str, str]]], **kwargs) -> list[float]:
+    """Reward function to check if the 'data' value matches the original prompt/instruction."""
+    rewards = []
+    original_inputs = prompts # Use 'prompt' key, adjust if needed based on trainer implementation
+    if len(original_inputs) != len(completions):
+         # If prompt kwarg isn't passed correctly, return neutral reward or log error
+         print(f"Warning: 'prompt' kwarg (length {len(original_inputs)}) mismatch with completions (length {len(completions)}) in value_correctness_reward. Returning 0.0.")
+         # Returning 0.0 might be safer to avoid rewarding incorrect behavior due to missing input
+         return [0.0] * len(completions)
+    # logger.info(prompts)
+    # logger.info(completions)
+    for i, completion in enumerate(completions):
+        content = completion[0]["content"]
+        original_input = original_inputs[i][1]["content"]
+        logger.info(content)
+        logger.info(original_input)
+        try:
+            data = json.loads(content)
+            # Check if 'data' key exists and its value matches the original input
+            if isinstance(data, dict) and "data" in data and data["data"] == original_input:
+                rewards.append(1.0)
+            else:
+                rewards.append(0.0)
+        except json.JSONDecodeError:
+            rewards.append(0.0) # Penalize invalid JSON
+        except Exception as e: # Catch other potential errors during comparison
+            print(f"Error during value comparison in value_correctness_reward: {e}")
+            rewards.append(0.0)
+    return rewards
+
+# --- End Custom JSON Rewards ---
+
+
 def get_reward_funcs(script_args) -> list[Callable]:
     REWARD_FUNCS_REGISTRY = {
         "accuracy": accuracy_reward,
@@ -563,6 +641,11 @@ def get_reward_funcs(script_args) -> list[Callable]:
         ),
         "code_format": get_code_format_reward(language=script_args.code_language),
         "tag_count": tag_count_reward,
+        # Add new JSON rewards
+        "json_format_reward": json_format_reward,
+        "key_correctness_reward": key_correctness_reward,
+        "key_exclusivity_reward": key_exclusivity_reward,
+        "value_correctness_reward": value_correctness_reward,
     }
     reward_funcs = [REWARD_FUNCS_REGISTRY[func] for func in script_args.reward_funcs]
 

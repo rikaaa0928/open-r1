@@ -1,0 +1,53 @@
+# Model arguments
+model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
+model_revision: main
+torch_dtype: float32 # Changed for CPU
+
+# Data training arguments
+dataset_name: dynamic_json_dataset # Placeholder for dynamic generation
+dataset_prompt_column: instruction
+system_prompt: "用户输入任何文本，请将其转换为JSON格式，其中键为 'data'，值为用户输入的文本。\n\n例如：\n\n用户输入: 你好\n模型输出: {\"data\": \"你好\"}\n\n用户输入: 今天天气不错\n模型输出: {\"data\": \"今天天气不错\"}\n\n用户输入: 他说：\"你好\"\n模型输出: {\"data\": \"他说：\\\"你好\\\"\"}" # Added example with escaped quotes
+
+# GRPO trainer config (CPU Optimized)
+bf16: false # Changed for CPU
+use_vllm: false # Changed for CPU
+do_eval: false
+gradient_accumulation_steps: 4
+gradient_checkpointing: false # Changed for CPU
+# gradient_checkpointing_kwargs: # Removed as gradient_checkpointing is false
+#   use_reentrant: false
+hub_model_id: Qwen2.5-0.5B-Open-R1-JSON-GRPO # Updated Hub ID
+hub_strategy: every_save
+learning_rate: 2.0e-05
+log_completions: true
+log_level: info
+logging_first_step: true
+logging_steps: 1 # Log frequently for CPU training visibility
+logging_strategy: steps
+lr_scheduler_type: cosine
+max_prompt_length: 512
+max_completion_length: 1024 # Keep reasonable length for JSON output
+max_steps: -1 # Train for specified epochs
+num_generations: 8 # Keep for diversity during training
+num_train_epochs: 1 # Start with 1 epoch
+output_dir: data/Qwen2.5-0.5B-JSON-GRPO # Updated output directory
+overwrite_output_dir: true
+per_device_eval_batch_size: 8 # Reduced for CPU
+per_device_train_batch_size: 8 # Reduced for CPU
+push_to_hub: true # Set to false if you don't want to push automatically
+report_to:
+- wandb # Keep wandb for logging if desired
+reward_funcs:
+- json_format_reward
+- key_correctness_reward
+- key_exclusivity_reward
+- value_correctness_reward
+reward_weights:
+- 1.0
+- 2.0
+- 4.0
+- 8.0
+save_strategy: "epoch"
+save_total_limit: 1
+seed: 42
+warmup_ratio: 0.1

@@ -14,10 +14,13 @@
 
 import logging
 import os
+import random
+import string
 import sys
 
 import datasets
 import torch
+from datasets import Dataset, DatasetDict
 import transformers
 from datasets import load_dataset
 from transformers import set_seed
@@ -32,6 +35,36 @@ from trl import GRPOTrainer, ModelConfig, TrlParser, get_peft_config
 
 
 logger = logging.getLogger(__name__)
+
+
+# --- Dynamic Dataset Generation ---
+
+def generate_random_text(min_length=5, max_length=50):
+    """Generates a random string of letters, digits, spaces, single quotes, and double quotes."""
+    length = random.randint(min_length, max_length)
+    chars = string.ascii_letters + string.digits + ' ' + "'\"" # Include letters, digits, space, single and double quotes
+    return ''.join(random.choice(chars) for _ in range(length))
+
+def create_dynamic_json_dataset(num_samples=1000, prompt_column="instruction"):
+    """Creates a DatasetDict with dynamically generated JSON data."""
+    logger.info(f"Dynamically generating {num_samples} samples for JSON dataset...")
+    data = []
+    for _ in range(num_samples):
+        instruction_text = generate_random_text()
+        # We don't need an 'output' column for GRPO as it generates completions,
+        # but we keep the 'instruction' column name consistent with the config.
+        data.append({prompt_column: instruction_text})
+
+    # Create a datasets.Dataset object
+    dynamic_dataset = Dataset.from_list(data)
+
+    # Create a DatasetDict (assuming train split only for simplicity, adjust if needed)
+    # You might want a validation split too for monitoring, generated similarly.
+    dataset_dict = DatasetDict({"train": dynamic_dataset})
+    logger.info("Dynamic JSON dataset created.")
+    return dataset_dict
+
+# --- End Dynamic Dataset Generation ---
 
 
 def main(script_args, training_args, model_args):
@@ -72,8 +105,15 @@ def main(script_args, training_args, model_args):
     if "wandb" in training_args.report_to:
         init_wandb_training(training_args)
 
-    # Load the dataset
-    dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+    # Load the dataset or generate dynamically
+    if script_args.dataset_name == "dynamic_json_dataset":
+        # Use the dynamic dataset generation function
+        # You might want to pass num_samples from script_args if you add it there
+        dataset = create_dynamic_json_dataset(prompt_column=script_args.dataset_prompt_column)
+    else:
+        # Load dataset from Hub or path
+        dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+
 
     ################
     # Load tokenizer
@@ -82,6 +122,7 @@ def main(script_args, training_args, model_args):
 
     # Get reward functions from the registry
     reward_funcs = get_reward_funcs(script_args)
+
 
     # Format into conversation
     def make_conversation(example, prompt_column: str = script_args.dataset_prompt_column):
@@ -126,7 +167,7 @@ def main(script_args, training_args, model_args):
         eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
         peft_config=get_peft_config(model_args),
         callbacks=get_callbacks(training_args, model_args),
-        processing_class=tokenizer,
+        processing_class=tokenizer, 
     )
 
     ###############
