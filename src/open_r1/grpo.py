@@ -39,13 +39,13 @@ logger = logging.getLogger(__name__)
 
 # --- Dynamic Dataset Generation ---
 
-def generate_random_text(min_length=5, max_length=50):
+def generate_random_text(min_length=5, max_length=25):
     """Generates a random string of letters, digits, spaces, single quotes, and double quotes."""
     length = random.randint(min_length, max_length)
     chars = string.ascii_letters + string.digits + ' ' + "'\"" # Include letters, digits, space, single and double quotes
     return ''.join(random.choice(chars) for _ in range(length))
 
-def create_dynamic_json_dataset(num_samples=1000, prompt_column="instruction"):
+def create_dynamic_json_dataset(num_samples=400, prompt_column="instruction"):
     """Creates a DatasetDict with dynamically generated JSON data."""
     logger.info(f"Dynamically generating {num_samples} samples for JSON dataset...")
     data = []
