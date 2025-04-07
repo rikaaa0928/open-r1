@@ -13,7 +13,7 @@ bf16: false # Changed for CPU
 use_vllm: false # Changed for CPU
 do_eval: false
 gradient_accumulation_steps: 4
-gradient_checkpointing: false # Changed for CPU
+gradient_checkpointing: true # Changed for CPU
 gradient_checkpointing_kwargs: # Removed as gradient_checkpointing is false
   use_reentrant: true
 hub_model_id: Qwen2.5-0.5B-Open-R1-JSON-GRPO # Updated Hub ID
