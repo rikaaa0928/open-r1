@@ -1,7 +1,7 @@
 # Model arguments
 model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
 model_revision: main
-torch_dtype: bfloat16 # Changed for CPU
+torch_dtype: float32 # Changed for CPU
 
 # Data training arguments
 dataset_name: dynamic_json_dataset # Placeholder for dynamic generation
@@ -9,7 +9,7 @@ dataset_prompt_column: instruction
 system_prompt: "用户输入任何文本，请将其转换为JSON格式，其中键为 'data'，值为用户输入的文本。\n\n例如：\n\n用户输入: 你好\n模型输出: {\"data\": \"你好\"}\n\n用户输入: 今天天气不错\n模型输出: {\"data\": \"今天天气不错\"}\n\n用户输入: 他说：\"你好\"\n模型输出: {\"data\": \"他说：\\\"你好\\\"\"}" # Added example with escaped quotes
 
 # GRPO trainer config (CPU Optimized)
-bf16: true # Changed for CPU
+bf16: false # Changed for CPU
 use_vllm: false # Changed for CPU
 do_eval: false
 gradient_accumulation_steps: 4
