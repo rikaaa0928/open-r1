@@ -1,7 +1,7 @@
 # Model arguments
 model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
 model_revision: main
-torch_dtype: float32 # Changed for CPU
+torch_dtype: bfloat16 # Changed for CPU
 
 # Data training arguments
 dataset_name: dynamic_json_dataset # Placeholder for dynamic generation
@@ -13,9 +13,9 @@ bf16: false # Changed for CPU
 use_vllm: false # Changed for CPU
 do_eval: false
 gradient_accumulation_steps: 4
-gradient_checkpointing: false # Changed for CPU
-# gradient_checkpointing_kwargs: # Removed as gradient_checkpointing is false
-#   use_reentrant: false
+gradient_checkpointing: true # Enable gradient checkpointing to save memory
+gradient_checkpointing_kwargs:
+  use_reentrant: false # Recommended setting for newer PyTorch/Transformers
 hub_model_id: Qwen2.5-0.5B-Open-R1-JSON-GRPO # Updated Hub ID
 hub_strategy: every_save
 learning_rate: 2.0e-05
