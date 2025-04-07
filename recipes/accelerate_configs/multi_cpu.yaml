@@ -1,0 +1,17 @@
+# Accelerate config for multi-CPU training
+compute_environment: LOCAL_MACHINE
+distributed_type: MULTI_CPU # Specify multi-CPU training
+num_processes: 4 # Set to the number of CPU cores you want to use
+use_cpu: true
+downcast_bf16: 'no'
+machine_rank: 0
+main_process_ip: null
+main_process_port: null
+main_training_function: main
+mixed_precision: 'no' # No mixed precision on CPU usually
+num_machines: 1
+rdzv_backend: static
+same_network: true
+tpu_env: []
+tpu_use_cluster: false
+tpu_use_sudo: false
