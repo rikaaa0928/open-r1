@@ -658,8 +658,14 @@ def input_inclusion_reward(prompts: list[list[dict[str, str]]], completions: lis
             escaped_input = json.dumps(original_input)[1:-1] # Remove surrounding quotes from dumps
 
             # Check if the escaped input is present in the completion content
-            if escaped_input in content:
+            if '"'+escaped_input+'"' in content:
                 rewards.append(1.0)
+            elif escaped_input+'"' in content:
+                rewards.append(0.5)
+            elif '"'+escaped_input in content:
+                rewards.append(0.5)
+            elif escaped_input in content:
+                rewards.append(0.1)
             else:
                 rewards.append(0.0)
         except Exception as e: # Catch potential errors
