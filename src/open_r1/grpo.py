@@ -70,6 +70,7 @@ def create_dynamic_json_dataset(num_samples=400, prompt_column="instruction"):
 def main(script_args, training_args, model_args):
     # Set seed for reproducibility
     set_seed(training_args.seed)
+    logger.info("--- Starting main function ---")
 
     ###############
     # Setup logging
@@ -106,25 +107,32 @@ def main(script_args, training_args, model_args):
         init_wandb_training(training_args)
 
     # Load the dataset or generate dynamically
+    logger.info("--- Loading/Generating dataset ---")
     if script_args.dataset_name == "dynamic_json_dataset":
         # Use the dynamic dataset generation function
         # You might want to pass num_samples from script_args if you add it there
         dataset = create_dynamic_json_dataset(prompt_column=script_args.dataset_prompt_column)
+        logger.info("--- Dynamic dataset generated ---")
     else:
         # Load dataset from Hub or path
         dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+        logger.info(f"--- Dataset '{script_args.dataset_name}' loaded ---")
 
 
     ################
     # Load tokenizer
     ################
+    logger.info("--- Loading tokenizer ---")
     tokenizer = get_tokenizer(model_args, training_args)
 
     # Get reward functions from the registry
+    logger.info("--- Loading reward functions ---")
     reward_funcs = get_reward_funcs(script_args)
+    logger.info("--- Reward functions loaded ---")
 
 
     # Format into conversation
+    logger.info("--- Mapping dataset to conversation format ---")
     def make_conversation(example, prompt_column: str = script_args.dataset_prompt_column):
         prompt = []
 
@@ -138,6 +146,7 @@ def main(script_args, training_args, model_args):
         return {"prompt": prompt}
 
     dataset = dataset.map(make_conversation)
+    logger.info("--- Dataset mapped ---")
 
     for split in dataset:
         if "messages" in dataset[split].column_names:
@@ -159,6 +168,7 @@ def main(script_args, training_args, model_args):
     #############################
     # Initialize the GRPO trainer
     #############################
+    logger.info("--- Initializing GRPOTrainer ---")
     trainer = GRPOTrainer(
         model=model_args.model_name_or_path,
         reward_funcs=reward_funcs,
@@ -167,8 +177,9 @@ def main(script_args, training_args, model_args):
         eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
         peft_config=get_peft_config(model_args),
         callbacks=get_callbacks(training_args, model_args),
-        processing_class=tokenizer, 
+        processing_class=tokenizer,
     )
+    logger.info("--- GRPOTrainer initialized ---")
 
     ###############
     # Training loop
@@ -179,7 +190,9 @@ def main(script_args, training_args, model_args):
         checkpoint = training_args.resume_from_checkpoint
     elif last_checkpoint is not None:
         checkpoint = last_checkpoint
+    logger.info(f"--- Starting training (resume_from_checkpoint={checkpoint}) ---")
     train_result = trainer.train(resume_from_checkpoint=checkpoint)
+    logger.info("--- Training finished ---")
     metrics = train_result.metrics
     metrics["train_samples"] = len(dataset[script_args.dataset_train_split])
     trainer.log_metrics("train", metrics)
@@ -190,8 +203,9 @@ def main(script_args, training_args, model_args):
     # Save model and create model card
     ##################################
     logger.info("*** Save model ***")
+    logger.info("--- Saving model state ---")
     trainer.save_model(training_args.output_dir)
-    logger.info(f"Model saved to {training_args.output_dir}")
+    logger.info(f"--- Model saved to {training_args.output_dir} ---")
 
     # Save everything else on main process
     kwargs = {
@@ -209,7 +223,9 @@ def main(script_args, training_args, model_args):
     ##########
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
+        logger.info("--- Starting evaluation ---")
         metrics = trainer.evaluate()
+        logger.info("--- Evaluation finished ---")
         metrics["eval_samples"] = len(dataset[script_args.dataset_test_split])
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
@@ -225,4 +241,9 @@ def main(script_args, training_args, model_args):
 if __name__ == "__main__":
     parser = TrlParser((GRPOScriptArguments, GRPOConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
-    main(script_args, training_args, model_args)
+    try:
+        main(script_args, training_args, model_args)
+        logger.info("--- Main function finished successfully ---")
+    except Exception as e:
+        logger.error(f"--- Main function failed with exception: {e} ---", exc_info=True)
+        raise e
