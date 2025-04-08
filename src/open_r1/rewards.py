@@ -610,6 +610,63 @@ def value_correctness_reward(prompts: list[list[dict[str, str]]], completions: l
             rewards.append(0.0)
     return rewards
 
+def reasonable_length_reward(prompts: list[list[dict[str, str]]], completions: list[list[dict[str, str]]], **kwargs) -> list[float]:
+    """Reward function to penalize outputs that are unreasonably long compared to the expected JSON format."""
+    rewards = []
+    original_inputs = prompts
+    if len(original_inputs) != len(completions):
+         print(f"Warning: 'prompt' kwarg (length {len(original_inputs)}) mismatch with completions (length {len(completions)}) in reasonable_length_reward. Returning 0.0.")
+         return [0.0] * len(completions)
+
+    # Define a reasonable overhead buffer (e.g., for {"data": ""} structure and potential minor variations)
+    LENGTH_BUFFER = 10
+
+    for i, completion in enumerate(completions):
+        content = completion[0]["content"]
+        original_input = original_inputs[i][1]["content"]
+        try:
+            # Calculate expected length based on proper JSON serialization
+            expected_json = json.dumps({"data": original_input})
+            expected_length = len(expected_json)
+            actual_length = len(content)
+
+            # Reward if actual length is within a reasonable range of the expected length
+            if actual_length <= expected_length + LENGTH_BUFFER:
+                rewards.append(1.0)
+            else:
+                # Optional: Add gradual penalty based on how much longer it is? For now, binary.
+                rewards.append(0.0)
+        except Exception as e: # Catch potential errors during calculation
+            print(f"Error during length calculation in reasonable_length_reward: {e}")
+            rewards.append(0.0)
+    return rewards
+
+def input_inclusion_reward(prompts: list[list[dict[str, str]]], completions: list[list[dict[str, str]]], **kwargs) -> list[float]:
+    """Reward function to check if the completion includes the (properly escaped) original input string."""
+    rewards = []
+    original_inputs = prompts
+    if len(original_inputs) != len(completions):
+         print(f"Warning: 'prompt' kwarg (length {len(original_inputs)}) mismatch with completions (length {len(completions)}) in input_inclusion_reward. Returning 0.0.")
+         return [0.0] * len(completions)
+
+    for i, completion in enumerate(completions):
+        content = completion[0]["content"]
+        original_input = original_inputs[i][1]["content"]
+        try:
+            # Get the properly escaped version of the input as it should appear in a JSON string value
+            # We dump just the string to get its escaped representation
+            escaped_input = json.dumps(original_input)[1:-1] # Remove surrounding quotes from dumps
+
+            # Check if the escaped input is present in the completion content
+            if escaped_input in content:
+                rewards.append(1.0)
+            else:
+                rewards.append(0.0)
+        except Exception as e: # Catch potential errors
+            print(f"Error during input inclusion check in input_inclusion_reward: {e}")
+            rewards.append(0.0)
+    return rewards
+
 # --- End Custom JSON Rewards ---
 
 
@@ -646,7 +703,17 @@ def get_reward_funcs(script_args) -> list[Callable]:
         "key_correctness_reward": key_correctness_reward,
         "key_exclusivity_reward": key_exclusivity_reward,
         "value_correctness_reward": value_correctness_reward,
+        "reasonable_length_reward": reasonable_length_reward, # Add new reward
+        "input_inclusion_reward": input_inclusion_reward,   # Add new reward
     }
-    reward_funcs = [REWARD_FUNCS_REGISTRY[func] for func in script_args.reward_funcs]
+    reward_funcs = []
+    for func_name in script_args.reward_funcs:
+        if func_name in REWARD_FUNCS_REGISTRY:
+            reward_funcs.append(REWARD_FUNCS_REGISTRY[func_name])
+        else:
+            logger.warning(f"Reward function '{func_name}' not found in registry. Skipping.")
+
+
+    # reward_funcs = [REWARD_FUNCS_REGISTRY[func] for func in script_args.reward_funcs]
 
     return reward_funcs
