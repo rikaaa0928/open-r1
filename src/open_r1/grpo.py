@@ -40,10 +40,30 @@ logger = logging.getLogger(__name__)
 # --- Dynamic Dataset Generation ---
 
 def generate_random_text(min_length=5, max_length=25):
-    """Generates a random string of letters, digits, spaces, single quotes, and double quotes."""
+    """Generates a random string of letters, digits, spaces, single quotes, and double quotes.
+    Aims for ~80% of strings to contain at least one space or quote."""
     length = random.randint(min_length, max_length)
-    chars = string.ascii_letters + string.digits + ' ' + "'\"" # Include letters, digits, space, single and double quotes
-    return ''.join(random.choice(chars) for _ in range(length))
+    base_chars = string.ascii_letters + string.digits
+    special_chars = ' ' + "'\""
+    all_chars = base_chars + special_chars
+
+    # Generate the initial random string using all allowed characters
+    random_string_list = [random.choice(all_chars) for _ in range(length)]
+
+    # Check if it already contains a special character
+    contains_special = any(c in special_chars for c in random_string_list)
+
+    # If it doesn't contain a special char, and we hit the 80% chance, force one in
+    # Ensure length > 0 before trying to replace (min_length=5 guarantees this)
+    if not contains_special and random.random() < 0.8 and length > 0:
+        # Choose a random position to replace
+        replace_pos = random.randint(0, length - 1)
+        # Choose a special character to insert
+        char_to_insert = random.choice(special_chars)
+        # Replace the character at that position
+        random_string_list[replace_pos] = char_to_insert
+
+    return "".join(random_string_list)
 
 def create_dynamic_json_dataset(num_samples=400, prompt_column="instruction"):
     """Creates a DatasetDict with dynamically generated JSON data."""

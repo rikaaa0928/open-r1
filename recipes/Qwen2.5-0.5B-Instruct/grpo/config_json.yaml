@@ -47,8 +47,8 @@ reward_funcs:
 reward_weights:
 - 1.0
 - 2.0
-- 3.0
-- 4.0
+- 2.0
+- 2.0
 - 2.0 # 对应 reasonable_length_reward
 - 2.0 # 对应 input_inclusion_reward
 save_strategy: "epoch"
