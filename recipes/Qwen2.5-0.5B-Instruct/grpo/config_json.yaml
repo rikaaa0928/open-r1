@@ -26,14 +26,14 @@ logging_steps: 1 # Log frequently for CPU training visibility
 logging_strategy: steps
 lr_scheduler_type: cosine
 max_prompt_length: 512
-max_completion_length: 1024 # Keep reasonable length for JSON output
+max_completion_length: 50 # Keep reasonable length for JSON output
 max_steps: -1 # Train for specified epochs
-num_generations: 5 # Keep for diversity during training
+num_generations: 8 # Keep for diversity during training
 num_train_epochs: 1 # Start with 1 epoch
 output_dir: data/Qwen2.5-0.5B-JSON-GRPO # Updated output directory
 overwrite_output_dir: true
-per_device_eval_batch_size: 5 # Reduced for CPU
-per_device_train_batch_size: 5 # Reduced for CPU
+per_device_eval_batch_size: 8 # Reduced for CPU
+per_device_train_batch_size: 8 # Reduced for CPU
 push_to_hub: true # Set to false if you don't want to push automatically
 report_to:
 - wandb # Keep wandb for logging if desired
@@ -46,10 +46,10 @@ reward_funcs:
 - input_inclusion_reward # 奖励输出内容包含了输入内容
 reward_weights:
 - 1.0
-- 2.0
-- 2.0
-- 2.0
-- 2.0 # 对应 reasonable_length_reward
+- 1.0
+- 1.0
+- 3.0
+- 1.0 # 对应 reasonable_length_reward
 - 2.0 # 对应 input_inclusion_reward
 save_strategy: "epoch"
 save_total_limit: 1
